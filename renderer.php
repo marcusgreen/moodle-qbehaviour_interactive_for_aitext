@@ -85,7 +85,7 @@ class qbehaviour_interactive_for_aitext_renderer extends qbehaviour_interactive_
         $output = html_writer::tag(
             'div',
             get_string('aihintheading', 'qbehaviour_interactive_for_aitext'),
-            ['class' => 'aihintheading font-weight-bold']
+            ['class' => 'aihintheading']
         );
         $output .= format_text($hint, FORMAT_HTML, ['context' => $options->context]);
 
