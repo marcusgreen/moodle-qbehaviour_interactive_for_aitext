@@ -268,4 +268,23 @@ final class walkthrough_test extends \qbehaviour_walkthrough_test_base {
         $this->render();
         $this->check_output_does_not_contain('penaltynotice');
     }
+
+    public function test_feedback_prompt_forbids_corrections_only_while_a_try_remains(): void {
+        $this->resetAfterTest();
+
+        $question = $this->make_question_with_hints(1);
+        $this->start_attempt_at_question($question, 'interactive', 2);
+        $rule = get_string('retryfeedbackrule', 'qtype_aitext');
+
+        // First try: another try follows, so the grading prompt forbids corrections.
+        $this->process_submission(['answer' => 'First try.', '-submit' => 1]);
+        $prompt = $this->quba->get_question_attempt($this->slot)->get_last_behaviour_var('_aiprompt');
+        $this->assertStringContainsString($rule, $prompt);
+
+        // Final try: the attempt ends, so corrections are allowed.
+        $this->process_submission(['-tryagain' => 1]);
+        $this->process_submission(['answer' => 'Second try.', '-submit' => 1]);
+        $prompt = $this->quba->get_question_attempt($this->slot)->get_last_behaviour_var('_aiprompt');
+        $this->assertStringNotContainsString($rule, $prompt);
+    }
 }

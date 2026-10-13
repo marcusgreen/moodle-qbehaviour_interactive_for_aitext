@@ -124,6 +124,9 @@ class qbehaviour_interactive_for_aitext extends qbehaviour_interactive {
         }
 
         $triesleft = $this->qa->get_last_behaviour_var('_triesleft');
+        // Tell the question whether another try follows, so the feedback for a try that is
+        // not the last one does not give away the answer.
+        $this->question->retrypossible = $triesleft > 1;
         [$fraction, $state] = $this->question->grade_response($response);
 
         // Persist whatever the grading call produced, whichever way the attempt goes.
@@ -279,6 +282,8 @@ class qbehaviour_interactive_for_aitext extends qbehaviour_interactive {
      * @return bool question_attempt::KEEP or question_attempt::DISCARD.
      */
     public function process_finish(question_attempt_pending_step $pendingstep) {
+        // The attempt is over, so the feedback may give corrections.
+        $this->question->retrypossible = false;
         $result = parent::process_finish($pendingstep);
 
         if ($result === question_attempt::KEEP) {
