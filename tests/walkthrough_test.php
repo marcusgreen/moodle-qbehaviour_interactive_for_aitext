@@ -66,6 +66,10 @@ final class walkthrough_test extends \qbehaviour_walkthrough_test_base {
 
         $question = \test_question_maker::make_question('aitext', 'plain');
         $question->penalty = 0.3333333;
+        // The qtype helper leaves these unset, and grading reads them with strict types.
+        $question->spellcheck = false;
+        $question->aiprompt = 'Mark the response.';
+        $question->markscheme = '';
 
         $question->hints = [];
         for ($i = 1; $i <= $numhints; $i++) {
@@ -194,5 +198,74 @@ final class walkthrough_test extends \qbehaviour_walkthrough_test_base {
             \qbehaviour_interactive_for_aitext::class,
             $this->quba->get_question_attempt($this->slot)->get_behaviour()
         );
+    }
+
+    public function test_penalty_notice_explains_the_reduced_mark(): void {
+        $this->resetAfterTest();
+
+        $question = $this->make_question_with_hints(2);
+        $this->start_attempt_at_question($question, 'interactive', 3);
+
+        $this->process_submission(['answer' => 'First try.', '-submit' => 1]);
+        $this->process_submission(['-tryagain' => 1]);
+        $this->process_submission(['answer' => 'Second try.', '-submit' => 1]);
+        $this->process_submission(['-tryagain' => 1]);
+        $this->process_submission(['answer' => 'Third try.', '-submit' => 1]);
+        $this->assertTrue($this->quba->get_question_state($this->slot)->is_finished());
+
+        // The stub grades every try at 0, which the penalty floors at 0. The notice
+        // still applies, because it states the rate rather than the mark before the penalty.
+        $this->render();
+        $this->check_output_contains_lang_string(
+            'penaltynotice',
+            'qbehaviour_interactive_for_aitext',
+            (object) ['penalty' => '33.3', 'tries' => 2]
+        );
+    }
+
+    public function test_penalty_notice_uses_the_singular_for_one_earlier_try(): void {
+        $this->resetAfterTest();
+
+        $question = $this->make_question_with_hints(1);
+        $this->start_attempt_at_question($question, 'interactive', 2);
+
+        $this->process_submission(['answer' => 'First try.', '-submit' => 1]);
+        $this->process_submission(['-tryagain' => 1]);
+        $this->process_submission(['answer' => 'Second try.', '-submit' => 1]);
+
+        $this->render();
+        $this->check_output_contains_lang_string(
+            'penaltynoticeone',
+            'qbehaviour_interactive_for_aitext',
+            (object) ['penalty' => '33.3']
+        );
+    }
+
+    public function test_no_penalty_notice_when_finished_on_the_first_try(): void {
+        $this->resetAfterTest();
+
+        $question = $this->make_question_with_hints(0);
+        $this->start_attempt_at_question($question, 'interactive', 1);
+
+        $this->process_submission(['answer' => 'My only attempt.', '-submit' => 1]);
+        $this->assertTrue($this->quba->get_question_state($this->slot)->is_finished());
+
+        $this->render();
+        $this->check_output_does_not_contain('penaltynotice');
+    }
+
+    public function test_no_penalty_notice_when_marks_are_hidden(): void {
+        $this->resetAfterTest();
+
+        $question = $this->make_question_with_hints(1);
+        $this->start_attempt_at_question($question, 'interactive', 2);
+
+        $this->process_submission(['answer' => 'First try.', '-submit' => 1]);
+        $this->process_submission(['-tryagain' => 1]);
+        $this->process_submission(['answer' => 'Second try.', '-submit' => 1]);
+
+        $this->displayoptions->marks = \question_display_options::MAX_ONLY;
+        $this->render();
+        $this->check_output_does_not_contain('penaltynotice');
     }
 }

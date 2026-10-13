@@ -23,6 +23,8 @@
  */
 
 $string['aihintheading'] = 'Hint';
+$string['penaltynotice'] = 'The overall mark includes a penalty of {$a->penalty}% of the available marks for each of the {$a->tries} earlier tries. The AI feedback above marks this try on its own.';
+$string['penaltynoticeone'] = 'The overall mark includes a penalty of {$a->penalty}% of the available marks for the earlier try. The AI feedback above marks this try on its own.';
 $string['pluginname'] = 'Interactive with AI hints';
 $string['privacy:metadata'] = 'The Interactive with AI hints question behaviour plugin does not store any personal data. AI-generated hints and grading data are stored as question attempt step data, which is managed by the core question engine privacy provider.';
 $string['spellcheckeditaction'] = 'Teacher edited spellcheck';

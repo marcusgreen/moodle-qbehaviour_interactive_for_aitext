@@ -46,7 +46,7 @@ class qbehaviour_interactive_for_aitext_renderer extends qbehaviour_interactive_
      * The parent decides whether a try-again button is appropriate at all and
      * returns an empty string when it is not. The hint is only shown when the
      * parent produces a button, so a finished attempt never displays a hint for a
-     * try the student cannot take.
+     * try the student cannot take. A finished attempt shows the penalty notice instead.
      *
      * @param question_attempt $qa a question attempt.
      * @param question_display_options $options controls what should and should not be displayed.
@@ -56,10 +56,65 @@ class qbehaviour_interactive_for_aitext_renderer extends qbehaviour_interactive_
         $tryagain = parent::feedback($qa, $options);
 
         if ($tryagain === '') {
-            return '';
+            return $this->penalty_notice($qa, $options);
         }
 
         return $this->ai_hint($qa, $options) . $tryagain;
+    }
+
+    /**
+     * Explain that the final mark includes a penalty for earlier tries.
+     *
+     * The AI marks each try on its own merits, so its feedback can say "5/5" while
+     * the recorded mark is lower after the penalty. This notice reconciles the two.
+     *
+     * The mark before the penalty is not stored and cannot always be recovered,
+     * because qbehaviour_interactive::adjust_fraction() floors the fraction at 0.
+     * The notice therefore states the penalty rate and the number of earlier tries,
+     * which is always true, and works for attempts made before this notice existed.
+     *
+     * @param question_attempt $qa a question attempt.
+     * @param question_display_options $options controls what should and should not be displayed.
+     * @return string HTML fragment, empty if no penalty applies.
+     */
+    protected function penalty_notice(question_attempt $qa, question_display_options $options) {
+        if ($options->marks < question_display_options::MARK_AND_MAX) {
+            return '';
+        }
+
+        if (!$qa->get_state()->is_finished() || $qa->get_fraction() === null) {
+            return '';
+        }
+
+        // A teacher's manual grade replaces the penalised mark, so the notice no longer applies.
+        if ($qa->get_last_behaviour_var('mark') !== null) {
+            return '';
+        }
+
+        $penalty = (float) $qa->get_question()->penalty;
+        if ($penalty <= 0) {
+            return '';
+        }
+
+        // The same count qbehaviour_interactive::adjust_fraction() uses. The final
+        // submission does not set _triesleft, so the last value is the one before it.
+        $totaltries = (int) $qa->get_step(0)->get_behaviour_var('_triesleft');
+        $triesleft = (int) $qa->get_last_behaviour_var('_triesleft');
+        $earliertries = $totaltries - $triesleft;
+        if ($earliertries <= 0) {
+            return '';
+        }
+
+        $a = (object) [
+            'penalty' => format_float($penalty * 100, 1, true, true),
+            'tries' => $earliertries,
+        ];
+        $string = $earliertries === 1 ? 'penaltynoticeone' : 'penaltynotice';
+
+        return html_writer::div(
+            get_string($string, 'qbehaviour_interactive_for_aitext', $a),
+            'penaltynotice alert alert-secondary'
+        );
     }
 
     /**
